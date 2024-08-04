@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "gform_retry",
+  "version": "1.0",
+  "description": "A Chrome extension to enable easy-retrying Google Forms.",
+  "content_scripts": [
+    {
+      "matches": ["https://docs.google.com/forms/d/e/*/viewscore*"],
+      "js": ["content_script.js"],
+      "world": "MAIN"
+    }
+  ]
+}
