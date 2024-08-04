@@ -132,8 +132,9 @@ const makeAnswer = (dataItemId) => {
 
 const makeProblem = (id, dataItemId) => {
   const answer = makeAnswer(dataItemId);
-  const problem = new Problem(id, answer);
+  if (!answer) return null;
 
+  const problem = new Problem(id, answer);
   if (!problem) return null;
   return problem;
 };
