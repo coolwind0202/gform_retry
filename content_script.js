@@ -4,26 +4,6 @@
  *
  */
 
-class Problem {
-  /**
-   *
-   * @param {number} id
-   * @param {Answer} answer
-   */
-  constructor(id, answer) {
-    this.id = id;
-    this.answer = answer;
-  }
-
-  wasAnsweredCorrectly() {
-    return this.answer.scoring.isPerfect();
-  }
-
-  wasAnsweredIncorrectly() {
-    return !this.wasAnsweredCorrectly();
-  }
-}
-
 class Answer {
   /**
    *
@@ -35,6 +15,31 @@ class Answer {
     this.id = id;
     this.scoring = scoring;
     this.value = value;
+  }
+
+  toQuery() {
+    throw new TypeError("Not Implemented");
+  }
+
+  isCorrect() {
+    return this.scoring.isPerfect();
+  }
+}
+
+class RadioButtonAnswer extends Answer {
+  toQuery() {
+    return `entry.${this.id}=${this.value}`;
+  }
+}
+
+class CheckboxAnswer extends Answer {
+  toQuery() {
+    /**
+     * @type string[]
+     */
+    const answeredLabels = this.value;
+
+    return answeredLabels.map((label) => `entry.${this.id}=${label}`).join("&");
   }
 }
 
@@ -70,83 +75,19 @@ class ScoringOfAnswer {
   }
 }
 
-class Problems {
-  constructor() {
-    /**
-     * @type Problem[]
-     */
-    this.values = [];
-  }
-
-  getCorrectedAnswerQuery() {
-    const query = this.values
-      .filter((problem) => problem.wasAnsweredCorrectly())
-      .map((problem) => `entry.${problem.id}=${problem.answer.value}`)
-      .join("&");
-
-    return query;
-  }
-
-  add(problem) {
-    this.values.push(problem);
-  }
-}
-
-/**
- *
- * Make model instances using DOM information
- *
- */
-
-/**
- * @param {number} dataItemId
- */
-const makeScroingOfAnswer = (dataItemId) => {
-  const query = `div[data-item-id='${dataItemId}'] > div > div:last-child`;
-  const scoringElement = document.querySelector(query);
-  if (!scoringElement) return null;
-
-  const scoringText = scoringElement.textContent;
-  const scoring = ScoringOfAnswer.fromScoringText(scoringText);
-  return scoring;
-};
-
-/**
- *
- * @param {number} dataItemId
- */
-const makeAnswer = (dataItemId) => {
-  const query = `div[data-item-id='${dataItemId}'] > div:nth-of-type(2n) > div`;
-  const answerElement = document.querySelector(query);
-  if (!answerElement) return null;
-
-  const answerValue = answerElement.dataset.value;
-  if (answerValue === undefined) return null;
-
-  const scoring = makeScroingOfAnswer(dataItemId);
-  if (!scoring) return null;
-
-  const answer = new Answer(dataItemId, scoring, answerValue);
-  return answer;
-};
-
-const makeProblem = (id, dataItemId) => {
-  const answer = makeAnswer(dataItemId);
-  if (!answer) return null;
-
-  const problem = new Problem(id, answer);
-  if (!problem) return null;
-  return problem;
-};
-
 /**
  *
  * parse FB_PUBLIC_LOAD_DATA_
  *
  */
 
+/**
+ * @param {number} dataItemId
+ */
+
 const CARD_TYPE = {
-  PROBLEM: 2,
+  RADIO: 2,
+  CHECKBOX: 4,
 };
 
 class CardType {
@@ -157,37 +98,104 @@ class CardType {
     this.value = cardDesc[3];
   }
 
-  isProblem() {
-    return this.value === CARD_TYPE.PROBLEM;
+  isRadio() {
+    return this.value === CARD_TYPE.RADIO;
+  }
+
+  isCheckbox() {
+    return this.value === CARD_TYPE.CHECKBOX;
   }
 }
 
 class Card {
   constructor(rawDesc) {
+    /**
+     * @type {number}
+     */
     this.problemId = rawDesc[4][0][0];
+    /**
+     * @type {number}
+     */
     this.dataItemId = rawDesc[0];
   }
+
+  get scoring() {
+    const query = `div[data-item-id='${this.dataItemId}'] > div > div:last-child`;
+    const scoringElement = document.querySelector(query);
+
+    if (!scoringElement) return null;
+    const scoringText = scoringElement.textContent;
+    return ScoringOfAnswer.fromScoringText(scoringText);
+  }
 }
+
+class RadioButtonCard extends Card {
+  get answerValue() {
+    const query = `div[data-item-id='${this.dataItemId}'] > div:nth-of-type(2n) > div`;
+    const answerElement = document.querySelector(query);
+    if (!answerElement) return null;
+
+    const answerValue = answerElement.dataset.value;
+    if (answerValue === undefined) return null;
+
+    return answerValue;
+  }
+
+  get answer() {
+    if (!this.scoring) return null;
+    return new RadioButtonAnswer(
+      this.problemId,
+      this.scoring,
+      this.answerValue
+    );
+  }
+}
+
+class CheckboxCard extends Card {
+  get answerValue() {
+    const query = `div[data-item-id='${this.dataItemId}'] > div[role='list'] div[role='checkbox']`;
+    const checkboxes = Array.from(document.querySelectorAll(query));
+
+    const answerValue = checkboxes
+      .filter((checkbox) => checkbox.ariaChecked === "true")
+      .map((checkbox) => checkbox.ariaLabel);
+    return answerValue;
+  }
+
+  get answer() {
+    if (!this.scoring) return null;
+    return new CheckboxAnswer(this.problemId, scoring, this.answerValue);
+  }
+}
+
+const getCard = (cardDesc) => {
+  const cardType = new CardType(cardDesc);
+
+  switch (cardType.value) {
+    case CARD_TYPE.CHECKBOX:
+      return new CheckboxCard(cardDesc);
+    case CARD_TYPE.RADIO:
+      return new RadioButtonCard(cardDesc);
+    default:
+      return null;
+  }
+};
 
 /**
  * @param {Array} cardDescriptions
  */
-const getProblems = (cardDescriptions) => {
-  const problems = new Problems();
+const getCards = (cardDescriptions) =>
+  cardDescriptions.map(getCard).filter((cardOrNull) => cardOrNull != null);
 
-  for (const cardDesc of cardDescriptions) {
-    const cardType = new CardType(cardDesc);
-    if (!cardType.isProblem()) continue;
-
-    const card = new Card(cardDesc);
-    const problem = makeProblem(card.problemId, card.dataItemId);
-    if (problem == null) continue;
-
-    problems.add(problem);
-  }
-
-  return problems;
-};
+/**
+ * @param {Card[]} cards
+ * @returns
+ */
+const makeCorrectedAnswersQuery = (cards) =>
+  cards
+    .filter((card) => card.answer?.isCorrect())
+    .map((card) => card.answer.toQuery())
+    .join("&");
 
 const getViewFormURL = () => {
   if (!URL.canParse("./viewform", document.location.href)) {
@@ -213,11 +221,11 @@ const createButtonElement = (text, url) => {
 };
 
 /**
- * @param {Problem[]} problems
+ * @param {Card[]} cards
  */
-const getRetryURL = (problems) => {
+const getRetryURL = (cards) => {
   const viewformURL = getViewFormURL();
-  const query = problems.getCorrectedAnswerQuery();
+  const query = makeCorrectedAnswersQuery(cards);
   viewformURL.search = `?${query}`;
 
   return viewformURL;
@@ -236,8 +244,8 @@ const process = () => {
    * @type {Array}
    */
   const cardDescriptions = FB_PUBLIC_LOAD_DATA_[1][1];
-  const problems = getProblems(cardDescriptions);
-  const retryURL = getRetryURL(problems);
+  const cards = getCards(cardDescriptions);
+  const retryURL = getRetryURL(cards);
 
   // Operation to DOM for displaying retry URL
   const button = createButtonElement("Retry", retryURL);
