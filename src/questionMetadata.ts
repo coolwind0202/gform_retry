@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const questionKinds = {
+  shortText: 0,
+  longText: 1,
   radio: 2,
   checkbox: 4,
 } as const;
@@ -41,6 +43,7 @@ export type QuestionKind = (typeof questionKinds)[keyof typeof questionKinds];
 
 const QuestionMetadata = z.object({
   id: z.number(),
+  blockId: z.number(),
   kind: z.nativeEnum(questionKinds),
 });
 
@@ -52,7 +55,11 @@ export const parseQuestionMetadataList = (
   const blocks = publicLoadData[1][1];
 
   return blocks
-    .map((block) => ({ kind: block[3], id: block[4]?.[0]?.[0] }))
+    .map((block) => ({
+      kind: block[3],
+      id: block[4]?.[0]?.[0],
+      blockId: block[0],
+    }))
     .map((block) => QuestionMetadata.safeParse(block))
     .filter((parsing) => parsing.success)
     .map((parsing) => parsing.data);

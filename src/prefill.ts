@@ -12,6 +12,9 @@ const buildParam = (response: QuestionResponse): [string, string][] => {
       return [[entryId, response.choice]];
     case questionKinds["checkbox"]:
       return response.choices.map((choice) => [entryId, choice]);
+    case questionKinds["shortText"]:
+    case questionKinds["longText"]:
+      return [[entryId, response.content]];
   }
 };
 
