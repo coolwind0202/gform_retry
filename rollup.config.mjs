@@ -1,14 +1,13 @@
 import nodeResolve from "@rollup/plugin-node-resolve";
+import typescript from "@rollup/plugin-typescript";
 
 export default {
-  input: "src/main.ts",
-  output: {
-    file: "dist/bundle/content_script.js",
-    format: "iife",
+  input: {
+    google_form: "src/google_form/main.ts",
   },
-  plugins: [
-    nodeResolve({
-      extensions: [".ts", ".js"],
-    }),
-  ],
+  output: {
+    dir: "dist/bundle",
+    format: "es",
+  },
+  plugins: [typescript(), nodeResolve()],
 };

@@ -134,4 +134,3 @@ out
 
 # For build of Chrome extensions
 dist/bundle/*
-dist/tsc/*

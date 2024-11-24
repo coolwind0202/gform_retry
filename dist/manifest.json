@@ -6,7 +6,7 @@
   "content_scripts": [
     {
       "matches": ["https://docs.google.com/forms/d/e/*/viewscore*"],
-      "js": ["bundle/content_script.js"],
+      "js": ["bundle/google_form.js"],
       "world": "MAIN"
     }
   ]
