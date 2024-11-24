@@ -3,11 +3,7 @@ import DOMPurify from "dompurify";
 import { questionKinds } from "./questionMetadata";
 import { QuestionResponse } from "./response";
 
-import {
-  TrustedHTML,
-  TrustedTypePolicy,
-  TrustedTypesWindow,
-} from "trusted-types/lib";
+import { TrustedTypesWindow } from "trusted-types/lib";
 
 const buildParam = (response: QuestionResponse): [string, string][] => {
   const entryId = `entry.${response.question.id}`;
